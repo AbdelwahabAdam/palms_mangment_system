@@ -1,0 +1,3 @@
+{% extends "base.html.jinja2" %}{% block content %}
+{% if succeeded %}<p>{{ report_name }} is ready.</p>{% if download_url %}<p><a href="{{ download_url }}">Download report</a></p>{% endif %}{% else %}<p>{{ report_name }} failed.</p><p>{{ error_message }}</p>{% endif %}
+{% endblock %}

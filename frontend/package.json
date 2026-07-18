@@ -1,0 +1,25 @@
+{
+  "name": "palms-frontend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "npm@11.6.2",
+  "workspaces": [
+    "shared",
+    "public-app",
+    "admin-app"
+  ],
+  "scripts": {
+    "dev:public": "npm run dev --workspace=@palms/public-app",
+    "dev:admin": "npm run dev --workspace=@palms/admin-app",
+    "build": "npm run build --workspace=@palms/shared && npm run build --workspace=@palms/public-app --if-present && npm run build --workspace=@palms/admin-app --if-present",
+    "build:shared": "npm run build --workspace=@palms/shared",
+    "build:public": "npm run build --workspace=@palms/public-app",
+    "build:admin": "npm run build --workspace=@palms/admin-app",
+    "test": "npm run test --workspace=@palms/shared && npm run test --workspace=@palms/public-app --if-present && npm run test --workspace=@palms/admin-app --if-present",
+    "test:public": "npm run test --workspace=@palms/public-app",
+    "test:admin": "npm run test --workspace=@palms/admin-app",
+    "lint": "npm run lint --workspace=@palms/shared && npm run lint --workspace=@palms/public-app --if-present && npm run lint --workspace=@palms/admin-app --if-present",
+    "typecheck": "npm run typecheck --workspace=@palms/shared && npm run typecheck --workspace=@palms/public-app --if-present && npm run typecheck --workspace=@palms/admin-app --if-present"
+  }
+}

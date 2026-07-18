@@ -1,0 +1,56 @@
+@import "tailwindcss";
+
+@theme {
+  --font-display: "Fraunces", Georgia, serif;
+  --font-sans: "Outfit", ui-sans-serif, sans-serif;
+
+  --color-sand-50: #f8f4ec;
+  --color-sand-100: #f0e6d4;
+  --color-sand-200: #e2d0b0;
+  --color-sand-300: #cbb489;
+  --color-sand-800: #4a3b28;
+  --color-sand-900: #2c2418;
+
+  --color-palm-50: #eef6f1;
+  --color-palm-100: #d5eadc;
+  --color-palm-500: #3d7a5c;
+  --color-palm-600: #2f5f48;
+  --color-palm-700: #244a38;
+  --color-palm-800: #1b372a;
+
+  --color-gold-400: #d4b45a;
+  --color-gold-500: #c49a2e;
+  --color-gold-600: #a67f1f;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+
+  body {
+    @apply bg-sand-50 font-sans text-sand-900 antialiased;
+    background-image:
+      radial-gradient(ellipse 80% 50% at 10% -10%, rgb(61 122 92 / 0.12), transparent),
+      radial-gradient(ellipse 60% 40% at 90% 0%, rgb(196 154 46 / 0.1), transparent);
+    min-height: 100dvh;
+  }
+
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-palm-600;
+  }
+}

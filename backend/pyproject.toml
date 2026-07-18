@@ -1,0 +1,60 @@
+[build-system]
+requires = ["setuptools>=80"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "palms-api"
+version = "0.1.0"
+description = "Foundation API for the Palms View and Management System"
+readme = "README.md"
+requires-python = ">=3.11,<3.15"
+dependencies = [
+    "alembic>=1.16,<2",
+    "argon2-cffi>=25.1,<26",
+    "boto3>=1.35,<2",
+    "croniter>=6.0,<7",
+    "Jinja2>=3.1,<4",
+    "Pillow>=11.0,<12",
+    "psycopg[binary]>=3.2,<4",
+    "pydantic>=2.11,<3",
+    "pydantic-settings>=2.10,<3",
+    "pyramid>=2.0,<3",
+    "SQLAlchemy>=2.0,<3",
+    "redis>=5.2,<7",
+    "reportlab>=4.2,<5",
+    "rq>=2.0,<3",
+    "waitress>=3.0,<4",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.4,<9",
+    "pytest-cov>=6.2,<7",
+    "WebTest>=3.0,<4",
+]
+
+[project.entry-points."paste.app_factory"]
+main = "palms_api:main"
+
+[tool.setuptools.packages.find]
+include = ["palms_api*"]
+
+[tool.setuptools.package-data]
+palms_api = ["templates/emails/*.jinja2"]
+
+[project.scripts]
+palms-report-scheduler = "palms_api.scheduler:main"
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+addopts = "--strict-markers --cov=palms_api --cov-report=term-missing"
+
+[tool.coverage.run]
+branch = true
+source = ["palms_api"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = false
+fail_under = 85
