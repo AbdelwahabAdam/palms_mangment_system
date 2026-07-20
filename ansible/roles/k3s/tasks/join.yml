@@ -3,38 +3,47 @@
   ansible.builtin.debug:
     msg: "{{ k3s_server_ip }}"
 
+- name: Check if k3s is already installed
+  ansible.builtin.stat:
+    path: /etc/rancher/k3s/k3s.yaml
+  register: k3s_config
+
 - name: Wait until first master is reachable
   ansible.builtin.wait_for:
     host: "{{ k3s_server_ip }}"
     port: 6443
     timeout: 300
+  when: not k3s_config.stat.exists
 
 - name: Wait for cluster token
   ansible.builtin.wait_for:
     path: /var/lib/rancher/k3s/server/token
     timeout: 300
   delegate_to: "{{ groups['servers'][0] }}"
+  when: not k3s_config.stat.exists
 
 - name: Read cluster token from first master
   ansible.builtin.slurp:
     src: /var/lib/rancher/k3s/server/token
   delegate_to: "{{ groups['servers'][0] }}"
   register: cluster_token
+  when: not k3s_config.stat.exists
 
 - name: Download k3s install script
   ansible.builtin.get_url:
     url: https://get.k3s.io
     dest: /tmp/install-k3s.sh
     mode: "0755"
+  when: not k3s_config.stat.exists
 
-- name: Clean up previous installation if exists
+- name: Clean up failed previous installation
   ansible.builtin.shell: |
     sudo systemctl stop k3s || true
     sudo /usr/local/bin/k3s-uninstall.sh || true
     sudo rm -rf /var/lib/rancher/k3s
     sudo rm -rf /etc/rancher/k3s
-  ignore_errors: yes
-  when: inventory_hostname != groups['servers'][0]
+  ignore_errors: true
+  when: not k3s_config.stat.exists
 
 - name: Join k3s control plane with retry and delay
   ansible.builtin.shell: |
@@ -49,13 +58,16 @@
       --token {{ cluster_token.content | b64decode | trim }}
       --docker
       --disable traefik
-      --tls-san {{ k3s_server_ip }}
+      --node-ip {{ k3s_ip }}
+      --advertise-address {{ k3s_ip }}
+      --tls-san {{ k3s_ip }}
       --etcd-arg=heartbeat-interval=500
       --etcd-arg=election-timeout=2500
   register: join_result
   retries: 5
   delay: 30
   until: join_result is not failed
+  when: not k3s_config.stat.exists
 
 - name: Wait for k3s service
   ansible.builtin.service:

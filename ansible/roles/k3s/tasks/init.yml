@@ -7,13 +7,18 @@
 
 - name: Install first k3s server
   ansible.builtin.command:
-    cmd: >
-      /tmp/install-k3s.sh
+    cmd: /tmp/install-k3s.sh
+    creates: /usr/local/bin/k3s
+  environment:
+    INSTALL_K3S_VERSION: "{{ k3s_version }}"
+    INSTALL_K3S_EXEC: >-
       server
       --docker
       --cluster-init
       --disable traefik
-    creates: /usr/local/bin/k3s
+      --node-ip {{ k3s_ip }}
+      --advertise-address {{ k3s_ip }}
+      --tls-san {{ k3s_ip }}
 
 - name: Enable and start k3s
   ansible.builtin.service:

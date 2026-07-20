@@ -1,0 +1,121 @@
+---
+# tasks file for grafana
+
+# Helm Repository
+
+- name: Add Grafana Helm repository
+  kubernetes.core.helm_repository:
+    name: grafana
+    repo_url: https://grafana.github.io/helm-charts
+
+# Install Grafana
+- name: Install Grafana
+  kubernetes.core.helm:
+    name: grafana
+    chart_ref: grafana/grafana
+    release_namespace: monitoring
+    create_namespace: true
+    kubeconfig: /etc/rancher/k3s/k3s.yaml
+    wait: true
+    timeout: 10m
+
+# Wait for Deployment
+- name: Wait for Grafana deployment
+  kubernetes.core.k8s_info:
+    kubeconfig: /etc/rancher/k3s/k3s.yaml
+    api_version: apps/v1
+    kind: Deployment
+    namespace: monitoring
+    name: grafana
+    wait: true
+    wait_condition:
+      type: Available
+      status: "True"
+    wait_timeout: 300
+
+# Get Pods
+- name: Get Grafana pods
+  kubernetes.core.k8s_info:
+    kubeconfig: /etc/rancher/k3s/k3s.yaml
+    api_version: v1
+    kind: Pod
+    namespace: monitoring
+    label_selectors:
+      - app.kubernetes.io/instance=grafana
+  register: grafana_pods
+
+- name: Display Grafana pods
+  ansible.builtin.debug:
+    msg: |
+      {% for pod in grafana_pods.resources %}
+      ----------------------------------------
+      Name: {{ pod.metadata.name }}
+
+      Phase: {{ pod.status.phase }}
+
+      Ready:
+      {{
+        pod.status.conditions
+        | selectattr('type','equalto','Ready')
+        | map(attribute='status')
+        | first
+      }}
+
+      {% endfor %}
+
+# Get Services
+- name: Get Grafana services
+  kubernetes.core.k8s_info:
+    kubeconfig: /etc/rancher/k3s/k3s.yaml
+    api_version: v1
+    kind: Service
+    namespace: monitoring
+    label_selectors:
+      - app.kubernetes.io/instance=grafana
+  register: grafana_services
+
+- name: Display Grafana services
+  ansible.builtin.debug:
+    msg: |
+      {% for svc in grafana_services.resources %}
+      ----------------------------------------
+      Name: {{ svc.metadata.name }}
+      Type: {{ svc.spec.type }}
+      ClusterIP: {{ svc.spec.clusterIP }}
+
+      {% for port in svc.spec.ports %}
+      Port {{ port.port }} -> {{ port.targetPort }}
+      {% endfor %}
+
+      {% endfor %}
+
+# Get Deployment
+- name: Get Grafana deployment
+  kubernetes.core.k8s_info:
+    kubeconfig: /etc/rancher/k3s/k3s.yaml
+    api_version: apps/v1
+    kind: Deployment
+    namespace: monitoring
+    name: grafana
+  register: grafana_deployment
+
+- name: Display deployment status
+  ansible.builtin.debug:
+    msg:
+      replicas: "{{ grafana_deployment.resources[0].status.replicas | default(0) }}"
+      readyReplicas: "{{ grafana_deployment.resources[0].status.readyReplicas | default(0) }}"
+      availableReplicas: "{{ grafana_deployment.resources[0].status.availableReplicas | default(0) }}"
+      updatedReplicas: "{{ grafana_deployment.resources[0].status.updatedReplicas | default(0) }}"
+
+# Validate Installation
+- name: Ensure Grafana installed successfully
+  ansible.builtin.assert:
+    that:
+      - grafana_pods.resources | length > 0
+      - >
+        (
+          grafana_deployment.resources[0].status.availableReplicas
+          | default(0)
+        ) > 0
+    success_msg: "Grafana installed successfully."
+    fail_msg: "Grafana installation failed."

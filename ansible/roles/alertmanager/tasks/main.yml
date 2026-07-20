@@ -1,0 +1,116 @@
+---
+# tasks file for alertmanager
+
+# Helm Repository
+- name: Add Prometheus Community Helm repository
+  kubernetes.core.helm_repository:
+    name: prometheus-community
+    repo_url: https://prometheus-community.github.io/helm-charts
+
+# Install Alertmanager
+- name: Install Alertmanager
+  kubernetes.core.helm:
+    name: alertmanager
+    chart_ref: prometheus-community/alertmanager
+    release_namespace: monitoring
+    create_namespace: true
+    kubeconfig: /etc/rancher/k3s/k3s.yaml
+    wait: true
+    timeout: 10m
+
+# Wait for StatefulSet
+- name: Wait for Alertmanager StatefulSet
+  kubernetes.core.k8s_info:
+    kubeconfig: /etc/rancher/k3s/k3s.yaml
+    api_version: apps/v1
+    kind: StatefulSet
+    namespace: monitoring
+    name: alertmanager
+    wait: true
+    wait_timeout: 300
+
+# Get Pods
+- name: Get Alertmanager pods
+  kubernetes.core.k8s_info:
+    kubeconfig: /etc/rancher/k3s/k3s.yaml
+    api_version: v1
+    kind: Pod
+    namespace: monitoring
+    label_selectors:
+      - app.kubernetes.io/instance=alertmanager
+  register: alertmanager_pods
+
+- name: Display Alertmanager pods
+  ansible.builtin.debug:
+    msg: |
+      {% for pod in alertmanager_pods.resources %}
+      ----------------------------------------
+      Name: {{ pod.metadata.name }}
+      Phase: {{ pod.status.phase }}
+      Ready:
+      {{
+        pod.status.conditions
+        | selectattr('type', 'equalto', 'Ready')
+        | map(attribute='status')
+        | first
+      }}
+
+      {% endfor %}
+
+# Get Services
+- name: Get Alertmanager services
+  kubernetes.core.k8s_info:
+    kubeconfig: /etc/rancher/k3s/k3s.yaml
+    api_version: v1
+    kind: Service
+    namespace: monitoring
+    label_selectors:
+      - app.kubernetes.io/instance=alertmanager
+  register: alertmanager_services
+
+- name: Display Alertmanager services
+  ansible.builtin.debug:
+    msg: |
+      {% for svc in alertmanager_services.resources %}
+      ----------------------------------------
+      Name: {{ svc.metadata.name }}
+      Type: {{ svc.spec.type }}
+      ClusterIP: {{ svc.spec.clusterIP }}
+
+      {% for port in svc.spec.ports %}
+      Port {{ port.port }} -> {{ port.targetPort }}
+      {% endfor %}
+
+      {% endfor %}
+
+# Get StatefulSet
+- name: Get Alertmanager StatefulSet
+  kubernetes.core.k8s_info:
+    kubeconfig: /etc/rancher/k3s/k3s.yaml
+    api_version: apps/v1
+    kind: StatefulSet
+    namespace: monitoring
+    name: alertmanager
+  register: alertmanager_statefulset
+
+- name: Display StatefulSet status
+  ansible.builtin.debug:
+    msg:
+      replicas: "{{ alertmanager_statefulset.resources[0].status.replicas | default(0) }}"
+      readyReplicas: "{{ alertmanager_statefulset.resources[0].status.readyReplicas | default(0) }}"
+      currentReplicas: "{{ alertmanager_statefulset.resources[0].status.currentReplicas | default(0) }}"
+      updatedReplicas: "{{ alertmanager_statefulset.resources[0].status.updatedReplicas | default(0) }}"
+
+# Validate Installation
+- name: Ensure Alertmanager installed successfully
+  ansible.builtin.assert:
+    that:
+      - alertmanager_pods.resources | length > 0
+      - alertmanager_statefulset.resources | length == 1
+      - >
+        (
+          alertmanager_statefulset.resources[0].status.readyReplicas
+          | default(0)
+        ) > 0
+    success_msg: "Alertmanager installed successfully."
+    fail_msg: "Alertmanager installation failed."

@@ -150,12 +150,14 @@ resource "local_file" "instance_ip" {
 resource "local_file" "ansible_inventory" {
     filename = "${path.module}/../ansible/inventory.ini"
 
-    content = <<EOF
-    [servers]
-    %{ for name, instance in aws_instance.palms ~}
-    ${name} ansible_host=${instance.public_ip}  k3s_ip=${instance.private_ip} ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/id_rsa
-    %{ endfor ~}
-    EOF
+    content = join("\n", concat(
+        ["[servers]"],
+        [
+            for name, instance in aws_instance.palms :
+            "${name} ansible_host=${instance.public_ip} k3s_ip=${instance.private_ip} ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/id_rsa"
+        ],
+        [""]
+    ))
 }
 
 ########################################
@@ -256,6 +258,14 @@ resource "aws_security_group" "palms_sg" {
     to_port     = 8472
     protocol    = "udp"
     self        = true
+    }
+
+    ingress {
+        description = "Kubelet between cluster nodes"
+        from_port   = 10250
+        to_port     = 10250
+        protocol    = "tcp"
+        self        = true
     }
 
     egress {
