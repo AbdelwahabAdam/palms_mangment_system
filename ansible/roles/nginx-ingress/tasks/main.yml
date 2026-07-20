@@ -3,6 +3,8 @@
   kubernetes.core.helm_repository:
     name: ingress-nginx
     repo_url: https://kubernetes.github.io/ingress-nginx
+  run_once: true
+  delegate_to: "{{ groups['servers'][0] }}"
 
 - name: Install ingress-nginx
   kubernetes.core.helm:
@@ -20,6 +22,8 @@
           nodePorts:
             http: 31080
             https: 31443
+  run_once: true
+  delegate_to: "{{ groups['servers'][0] }}"
 
 # Wait until the Deployment is Available
 - name: Wait for ingress controller deployment
@@ -34,6 +38,8 @@
       type: Available
       status: "True"
     wait_timeout: 300
+  run_once: true
+  delegate_to: "{{ groups['servers'][0] }}"
 
 # Get Pods
 - name: Get ingress controller pods
@@ -43,6 +49,8 @@
     kind: Pod
     namespace: ingress-nginx
   register: ingress_pods
+  run_once: true
+  delegate_to: "{{ groups['servers'][0] }}"
 
 - name: Display ingress pods
   ansible.builtin.debug:
@@ -58,6 +66,8 @@
       {% endfor %}
 
       {% endfor %}
+  run_once: true
+  delegate_to: "{{ groups['servers'][0] }}"
 
 # Get Services
 - name: Get ingress services
@@ -67,6 +77,8 @@
     kind: Service
     namespace: ingress-nginx
   register: ingress_services
+  run_once: true
+  delegate_to: "{{ groups['servers'][0] }}"
 
 - name: Display ingress services
   ansible.builtin.debug:
@@ -81,6 +93,8 @@
       {% endfor %}
 
       {% endfor %}
+  run_once: true
+  delegate_to: "{{ groups['servers'][0] }}"
 
 
 # Get Deployment
@@ -92,6 +106,8 @@
     namespace: ingress-nginx
     name: ingress-nginx-controller
   register: ingress_deployment
+  run_once: true
+  delegate_to: "{{ groups['servers'][0] }}"
 
 - name: Display deployment status
   ansible.builtin.debug:
@@ -101,3 +117,5 @@
       readyReplicas: "{{ ingress_deployment.resources[0].status.readyReplicas | default(0) }}"
       availableReplicas: "{{ ingress_deployment.resources[0].status.availableReplicas | default(0) }}"
       updatedReplicas: "{{ ingress_deployment.resources[0].status.updatedReplicas | default(0) }}"
+  run_once: true
+  delegate_to: "{{ groups['servers'][0] }}"

@@ -1,3 +1,56 @@
 #SPDX-License-Identifier: MIT-0
 ---
-# tasks file for deploy
+# tasks file for transfer_files
+
+## TODO: make this private repo and add access token to ansible vault for authentication
+- name: Clone palms repository
+  ansible.builtin.git:
+    repo: https://github.com/AbdelwahabAdam/palms_mangment_system.git
+    dest: /opt/palms
+    version: main
+    update: true
+    force: true
+
+- name: Create reports directory
+  file:
+    path: /data/report_data
+    state: directory
+    owner: 100
+    group: 101
+    mode: "0775"
+
+# - name: Create instance_ip file
+#   copy:
+#     dest: /opt/palms/instance_ip
+#     content: "{{ ansible_host }}\n"
+#     owner: ubuntu
+#     group: ubuntu
+#     mode: "0644"
+
+- name: Deploy palms
+  kubernetes.core.helm:
+    kubeconfig: /etc/rancher/k3s/k3s.yaml
+    wait: true
+    name: palms
+    chart_ref: /opt/palms/helm
+    release_namespace: palms
+    release_state: present
+    create_namespace: true
+
+    values_files:
+      - /opt/palms/helm/values.yaml
+
+    values:
+      backendSecret:
+        DATABASE_USER: "{{ DATABASE_USER }}"
+        DATABASE_PASSWORD: "{{ DATABASE_PASSWORD }}"
+        JWT_SECRET_KEY: "{{ JWT_SECRET_KEY }}"
+        BOOTSTRAP_ADMIN_EMAIL: "{{ BOOTSTRAP_ADMIN_EMAIL }}"
+        BOOTSTRAP_ADMIN_PASSWORD: "{{ BOOTSTRAP_ADMIN_PASSWORD }}"
+        SMTP_USERNAME: "{{ SMTP_USERNAME }}"
+        SMTP_PASSWORD: "{{ SMTP_PASSWORD }}"
+        SMTP_FROM: "{{ SMTP_FROM }}"
+      registry:
+        username: "{{ dockerhub_username }}"
+        password: "{{ dockerhub_token }}"
+        email: "{{ dockerhub_email }}"

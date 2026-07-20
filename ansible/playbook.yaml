@@ -1,13 +1,13 @@
 ---
-- name: Install Python
-  hosts: servers
-  become: true
-  gather_facts: true
+# - name: Install Python
+#   hosts: servers
+#   become: true
+#   gather_facts: true
 
-  roles:
-    - python
-  # vars_files:
-  #   - group_vars/vault.yml
+#   roles:
+#     - python
+#   # vars_files:
+#   #   - group_vars/vault.yml
 
 
 - name: config machines
@@ -21,11 +21,11 @@
   #   - group_vars/vault.yml
     
   roles:
-    - docker
-    - git
-    - helm
-    - k3s
-    - nginx-ingress
+    # - docker
+    # - git
+    # - helm
+    # - k3s
+    # - nginx-ingress
     - cert-manager
     - alertmanager
     - prometheus

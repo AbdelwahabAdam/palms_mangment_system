@@ -6,6 +6,8 @@
   kubernetes.core.helm_repository:
     name: prometheus-community
     repo_url: https://prometheus-community.github.io/helm-charts
+  run_once: true
+  delegate_to: "{{ groups['servers'][0] }}"
 
 # Install Prometheus
 - name: Install Prometheus
@@ -17,6 +19,8 @@
     kubeconfig: /etc/rancher/k3s/k3s.yaml
     wait: true
     timeout: 10m
+  run_once: true
+  delegate_to: "{{ groups['servers'][0] }}"
 
 # Wait for Prometheus Server Deployment
 - name: Wait for Prometheus server deployment
@@ -31,6 +35,8 @@
       type: Available
       status: "True"
     wait_timeout: 300
+  run_once: true
+  delegate_to: "{{ groups['servers'][0] }}"
 
 # Get Pods
 - name: Get Prometheus pods
@@ -42,6 +48,8 @@
     label_selectors:
       - app.kubernetes.io/instance=prometheus
   register: prometheus_pods
+  run_once: true
+  delegate_to: "{{ groups['servers'][0] }}"
 
 - name: Display Prometheus pods
   ansible.builtin.debug:
@@ -59,6 +67,8 @@
       }}
 
       {% endfor %}
+  run_once: true
+  delegate_to: "{{ groups['servers'][0] }}"
 
 # Get Services
 - name: Get Prometheus services
@@ -70,6 +80,8 @@
     label_selectors:
       - app.kubernetes.io/instance=prometheus
   register: prometheus_services
+  run_once: true
+  delegate_to: "{{ groups['servers'][0] }}"
 
 - name: Display Prometheus services
   ansible.builtin.debug:
@@ -85,6 +97,8 @@
       {% endfor %}
 
       {% endfor %}
+  run_once: true
+  delegate_to: "{{ groups['servers'][0] }}"
 
 # Get Deployment
 - name: Get Prometheus server deployment
@@ -95,6 +109,8 @@
     namespace: monitoring
     name: prometheus-server
   register: prometheus_deployment
+  run_once: true
+  delegate_to: "{{ groups['servers'][0] }}"
 
 - name: Display deployment status
   ansible.builtin.debug:
@@ -103,6 +119,8 @@
       readyReplicas: "{{ prometheus_deployment.resources[0].status.readyReplicas | default(0) }}"
       availableReplicas: "{{ prometheus_deployment.resources[0].status.availableReplicas | default(0) }}"
       updatedReplicas: "{{ prometheus_deployment.resources[0].status.updatedReplicas | default(0) }}"
+  run_once: true
+  delegate_to: "{{ groups['servers'][0] }}"
 
 # Validate Installation
 - name: Ensure Prometheus installed successfully
@@ -116,3 +134,5 @@
         ) > 0
     success_msg: "Prometheus installed successfully."
     fail_msg: "Prometheus installation failed."
+  run_once: true
+  delegate_to: "{{ groups['servers'][0] }}"

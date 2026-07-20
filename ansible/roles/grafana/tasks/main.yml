@@ -7,6 +7,8 @@
   kubernetes.core.helm_repository:
     name: grafana
     repo_url: https://grafana.github.io/helm-charts
+  run_once: true
+  delegate_to: "{{ groups['servers'][0] }}"
 
 # Install Grafana
 - name: Install Grafana
@@ -18,6 +20,8 @@
     kubeconfig: /etc/rancher/k3s/k3s.yaml
     wait: true
     timeout: 10m
+  run_once: true
+  delegate_to: "{{ groups['servers'][0] }}"
 
 # Wait for Deployment
 - name: Wait for Grafana deployment
@@ -32,6 +36,8 @@
       type: Available
       status: "True"
     wait_timeout: 300
+  run_once: true
+  delegate_to: "{{ groups['servers'][0] }}"
 
 # Get Pods
 - name: Get Grafana pods
@@ -43,6 +49,8 @@
     label_selectors:
       - app.kubernetes.io/instance=grafana
   register: grafana_pods
+  run_once: true
+  delegate_to: "{{ groups['servers'][0] }}"
 
 - name: Display Grafana pods
   ansible.builtin.debug:
@@ -62,6 +70,8 @@
       }}
 
       {% endfor %}
+  run_once: true
+  delegate_to: "{{ groups['servers'][0] }}"
 
 # Get Services
 - name: Get Grafana services
@@ -73,6 +83,8 @@
     label_selectors:
       - app.kubernetes.io/instance=grafana
   register: grafana_services
+  run_once: true
+  delegate_to: "{{ groups['servers'][0] }}"
 
 - name: Display Grafana services
   ansible.builtin.debug:
@@ -88,6 +100,8 @@
       {% endfor %}
 
       {% endfor %}
+  run_once: true
+  delegate_to: "{{ groups['servers'][0] }}"
 
 # Get Deployment
 - name: Get Grafana deployment
@@ -98,6 +112,8 @@
     namespace: monitoring
     name: grafana
   register: grafana_deployment
+  run_once: true
+  delegate_to: "{{ groups['servers'][0] }}"
 
 - name: Display deployment status
   ansible.builtin.debug:
@@ -106,6 +122,8 @@
       readyReplicas: "{{ grafana_deployment.resources[0].status.readyReplicas | default(0) }}"
       availableReplicas: "{{ grafana_deployment.resources[0].status.availableReplicas | default(0) }}"
       updatedReplicas: "{{ grafana_deployment.resources[0].status.updatedReplicas | default(0) }}"
+  run_once: true
+  delegate_to: "{{ groups['servers'][0] }}"
 
 # Validate Installation
 - name: Ensure Grafana installed successfully
@@ -119,3 +137,5 @@
         ) > 0
     success_msg: "Grafana installed successfully."
     fail_msg: "Grafana installation failed."
+  run_once: true
+  delegate_to: "{{ groups['servers'][0] }}"

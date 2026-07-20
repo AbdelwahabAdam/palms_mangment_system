@@ -6,6 +6,8 @@
   kubernetes.core.helm_repository:
     name: prometheus-community
     repo_url: https://prometheus-community.github.io/helm-charts
+  run_once: true
+  delegate_to: "{{ groups['servers'][0] }}"
 
 # Install Alertmanager
 - name: Install Alertmanager
@@ -17,6 +19,8 @@
     kubeconfig: /etc/rancher/k3s/k3s.yaml
     wait: true
     timeout: 10m
+  run_once: true
+  delegate_to: "{{ groups['servers'][0] }}"
 
 # Wait for StatefulSet
 - name: Wait for Alertmanager StatefulSet
@@ -28,6 +32,8 @@
     name: alertmanager
     wait: true
     wait_timeout: 300
+  run_once: true
+  delegate_to: "{{ groups['servers'][0] }}"
 
 # Get Pods
 - name: Get Alertmanager pods
@@ -39,6 +45,8 @@
     label_selectors:
       - app.kubernetes.io/instance=alertmanager
   register: alertmanager_pods
+  run_once: true
+  delegate_to: "{{ groups['servers'][0] }}"
 
 - name: Display Alertmanager pods
   ansible.builtin.debug:
@@ -56,6 +64,8 @@
       }}
 
       {% endfor %}
+  run_once: true
+  delegate_to: "{{ groups['servers'][0] }}"
 
 # Get Services
 - name: Get Alertmanager services
@@ -67,6 +77,8 @@
     label_selectors:
       - app.kubernetes.io/instance=alertmanager
   register: alertmanager_services
+  run_once: true
+  delegate_to: "{{ groups['servers'][0] }}"
 
 - name: Display Alertmanager services
   ansible.builtin.debug:
@@ -82,6 +94,8 @@
       {% endfor %}
 
       {% endfor %}
+  run_once: true
+  delegate_to: "{{ groups['servers'][0] }}"
 
 # Get StatefulSet
 - name: Get Alertmanager StatefulSet
@@ -92,6 +106,8 @@
     namespace: monitoring
     name: alertmanager
   register: alertmanager_statefulset
+  run_once: true
+  delegate_to: "{{ groups['servers'][0] }}"
 
 - name: Display StatefulSet status
   ansible.builtin.debug:
@@ -100,6 +116,8 @@
       readyReplicas: "{{ alertmanager_statefulset.resources[0].status.readyReplicas | default(0) }}"
       currentReplicas: "{{ alertmanager_statefulset.resources[0].status.currentReplicas | default(0) }}"
       updatedReplicas: "{{ alertmanager_statefulset.resources[0].status.updatedReplicas | default(0) }}"
+  run_once: true
+  delegate_to: "{{ groups['servers'][0] }}"
 
 # Validate Installation
 - name: Ensure Alertmanager installed successfully
@@ -114,3 +132,5 @@
         ) > 0
     success_msg: "Alertmanager installed successfully."
     fail_msg: "Alertmanager installation failed."
+  run_once: true
+  delegate_to: "{{ groups['servers'][0] }}"
