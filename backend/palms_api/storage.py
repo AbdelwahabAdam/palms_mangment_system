@@ -84,13 +84,18 @@ class S3StorageClient:
         )
 
     def upload_bytes(self, key: str, content: bytes, *, content_type: str) -> None:
-        self.client.put_object(
-            Bucket=self.bucket_name,
-            Key=safe_storage_key(key),
-            Body=content,
-            ContentType=content_type,
-            ServerSideEncryption="AES256",
-        )
+        params: dict[str, object] = {
+            "Bucket": self.bucket_name,
+            "Key": safe_storage_key(key),
+            "Body": content,
+            "ContentType": content_type,
+        }
+        # AWS S3: default SSE-S3. MinIO/custom endpoints often reject SSE without KMS.
+        if self.settings.s3_server_side_encryption:
+            params["ServerSideEncryption"] = self.settings.s3_server_side_encryption
+        elif not self.settings.s3_endpoint_url:
+            params["ServerSideEncryption"] = "AES256"
+        self.client.put_object(**params)
 
     def delete_file(self, key: str) -> None:
         self.client.delete_object(Bucket=self.bucket_name, Key=safe_storage_key(key))

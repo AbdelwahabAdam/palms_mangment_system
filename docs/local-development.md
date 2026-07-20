@@ -43,6 +43,8 @@ docker compose --env-file compose.env up -d
 ```powershell
 docker compose --env-file compose.env exec backend python scripts/create_super_admin.py --email admin@example.com --password "Admin12345678" --name "Super Admin"
 docker compose --env-file compose.env exec backend python scripts/seed_demo_data.py
+# Or a fuller dataset (10 donors, 20 palms with images, reports + schedules):
+docker compose --env-file compose.env exec backend python scripts/seed_full_demo_data.py
 ```
 
 ## 5. Open the apps

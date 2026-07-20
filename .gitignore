@@ -69,3 +69,8 @@ terraform/.terraform
 terraform/.terraform.lock.hcl
 terraform/terraform.tfstate
 terraform/terraform.tfstate.backup
+
+
+# Helm
+
+helm/README.md
