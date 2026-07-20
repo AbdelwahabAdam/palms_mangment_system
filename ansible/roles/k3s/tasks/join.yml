@@ -1,0 +1,66 @@
+---
+- name: Show k3s server IP
+  ansible.builtin.debug:
+    msg: "{{ k3s_server_ip }}"
+
+- name: Wait until first master is reachable
+  ansible.builtin.wait_for:
+    host: "{{ k3s_server_ip }}"
+    port: 6443
+    timeout: 300
+
+- name: Wait for cluster token
+  ansible.builtin.wait_for:
+    path: /var/lib/rancher/k3s/server/token
+    timeout: 300
+  delegate_to: "{{ groups['servers'][0] }}"
+
+- name: Read cluster token from first master
+  ansible.builtin.slurp:
+    src: /var/lib/rancher/k3s/server/token
+  delegate_to: "{{ groups['servers'][0] }}"
+  register: cluster_token
+
+- name: Download k3s install script
+  ansible.builtin.get_url:
+    url: https://get.k3s.io
+    dest: /tmp/install-k3s.sh
+    mode: "0755"
+
+- name: Clean up previous installation if exists
+  ansible.builtin.shell: |
+    sudo systemctl stop k3s || true
+    sudo /usr/local/bin/k3s-uninstall.sh || true
+    sudo rm -rf /var/lib/rancher/k3s
+    sudo rm -rf /etc/rancher/k3s
+  ignore_errors: yes
+  when: inventory_hostname != groups['servers'][0]
+
+- name: Join k3s control plane with retry and delay
+  ansible.builtin.shell: |
+    /tmp/install-k3s.sh
+  args:
+    creates: /etc/rancher/k3s/k3s.yaml
+  environment:
+    INSTALL_K3S_VERSION: "{{ k3s_version }}"
+    INSTALL_K3S_EXEC: >-
+      server
+      --server https://{{ k3s_server_ip }}:6443
+      --token {{ cluster_token.content | b64decode | trim }}
+      --docker
+      --disable traefik
+      --tls-san {{ k3s_server_ip }}
+      --etcd-arg=heartbeat-interval=500
+      --etcd-arg=election-timeout=2500
+  register: join_result
+  retries: 5
+  delay: 30
+  until: join_result is not failed
+
+- name: Wait for k3s service
+  ansible.builtin.service:
+    name: k3s
+    enabled: true
+    state: started
+  retries: 10
+  delay: 10

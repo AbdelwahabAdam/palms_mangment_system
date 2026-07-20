@@ -1,0 +1,27 @@
+---
+# - name: Install Python
+#   hosts: servers
+#   become: true
+#   gather_facts: true
+
+#   roles:
+#     - python
+#   # vars_files:
+#   #   - group_vars/vault.yml
+
+
+- name: config machines
+  hosts: servers
+  become: true
+  gather_facts: true
+
+  vars:
+    ansible_python_interpreter: /opt/ansible-venv/bin/python
+  # vars_files:
+  #   - group_vars/vault.yml
+    
+  roles:
+    # - docker
+    # - git
+    # - helm
+    - k3s

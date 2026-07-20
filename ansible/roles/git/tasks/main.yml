@@ -1,0 +1,13 @@
+#SPDX-License-Identifier: MIT-0
+---
+# tasks file for git
+
+- name: update packages
+  ansible.builtin.apt:
+    update_cache: yes
+    upgrade: yes
+
+- name: install git
+  ansible.builtin.package:
+    name: git
+    state: present

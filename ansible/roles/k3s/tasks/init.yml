@@ -1,0 +1,26 @@
+---
+- name: Download k3s install script
+  ansible.builtin.get_url:
+    url: https://get.k3s.io
+    dest: /tmp/install-k3s.sh
+    mode: "0755"
+
+- name: Install first k3s server
+  ansible.builtin.command:
+    cmd: >
+      /tmp/install-k3s.sh
+      server
+      --docker
+      --cluster-init
+      --disable traefik
+    creates: /usr/local/bin/k3s
+
+- name: Enable and start k3s
+  ansible.builtin.service:
+    name: k3s
+    enabled: true
+    state: started
+
+- name: Wait for token
+  ansible.builtin.wait_for:
+    path: /var/lib/rancher/k3s/server/token

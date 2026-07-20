@@ -1,0 +1,1 @@
+public_key_path = "/home/hopa/.ssh/id_rsa.pub"

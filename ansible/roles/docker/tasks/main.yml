@@ -1,0 +1,78 @@
+---
+  - name: Update and upgrade apt packages
+    become: true
+    ansible.builtin.apt:
+      upgrade: yes
+      update_cache: yes
+  
+  - name: Install ca-certificates
+    ansible.builtin.package:
+      name: 
+        - ca-certificates
+        - curl
+      state: present
+
+  - name: Create Docker APT keyring directory
+    ansible.builtin.file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: '0755'
+
+  - name: Download Docker GPG key
+    ansible.builtin.get_url:
+      url: https://download.docker.com/linux/ubuntu/gpg
+      dest: /etc/apt/keyrings/docker.asc
+
+
+  - name: Change file ownership, group and permissions
+    ansible.builtin.file:
+        path: /etc/apt/keyrings/docker.asc
+        mode: '0644'
+
+
+  - name: Get Debian architecture
+    ansible.builtin.command:
+      cmd: dpkg --print-architecture
+    register: debian_arch
+    changed_when: false
+    
+  - name: Create a file with specific content
+    ansible.builtin.template:
+      dest: /etc/apt/sources.list.d/docker.sources
+      src: docker.jinja2
+
+  - name: Update and upgrade apt packages
+    become: true
+    ansible.builtin.apt:
+      upgrade: yes
+      update_cache: yes
+
+  - name: Install docker packages
+    ansible.builtin.package:
+      name:
+       - docker-ce 
+       - docker-ce-cli
+       - containerd.io
+       - docker-buildx-plugin
+       - docker-compose-plugin
+      state: present
+
+  - name: enable docker packages
+    ansible.builtin.service:
+      name: docker
+      enabled: yes
+
+  - name: start docker packages
+    ansible.builtin.service:
+      name: docker
+      state: started
+
+  - name: verify docker installation
+    ansible.builtin.command:
+      cmd: docker --version
+    register: docker_version
+    changed_when: false
+  
+  - name: Display Docker version
+    ansible.builtin.debug:
+      msg: "Docker version: {{ docker_version.stdout }}"

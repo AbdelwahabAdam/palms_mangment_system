@@ -1,0 +1,18 @@
+---
+# SPDX-License-Identifier: MIT-0
+# tasks file for k3s
+
+- name: Install dependencies
+  import_tasks: install.yml
+
+- name: Initialize first control plane
+  import_tasks: init.yml
+  when: inventory_hostname == groups['servers'][0]
+
+- name: Join remaining control planes with throttle
+  import_tasks: join.yml
+  when: inventory_hostname != groups['servers'][0]
+  throttle: 1 
+
+- name: Configure kubeconfig
+  import_tasks: kubeconfig.yml
