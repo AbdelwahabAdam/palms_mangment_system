@@ -1,0 +1,35 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "palms.configMapName" . }}
+  labels:
+    {{- include "palms.labels" . | nindent 4 }}
+data:
+  ADMIN_APP_URL: {{ printf "%s/admin/" (include "palms.publicBaseUrl" .) | quote }}
+  APP_ENVIRONMENT: {{ .Values.config.APP_ENVIRONMENT | quote }}
+  APP_NAME: {{ .Values.config.APP_NAME | quote }}
+  APP_VERSION: {{ .Values.config.APP_VERSION | quote }}
+  EMAIL_ENABLED: {{ .Values.config.EMAIL_ENABLED | quote }}
+  IMAGE_MAX_UPLOAD_MB: {{ .Values.config.IMAGE_MAX_UPLOAD_MB | quote }}
+  LOG_LEVEL: {{ .Values.config.LOG_LEVEL | quote }}
+  PUBLIC_APP_URL: {{ include "palms.publicBaseUrl" . | quote }}
+  REDIS_URL: {{ printf "redis://%s:%v/0" (include "palms.redis.name" .) .Values.redis.service.port | quote }}
+  REPORT_EXECUTION_MODE: {{ .Values.config.REPORT_EXECUTION_MODE | quote }}
+  RQ_QUEUE_NAME: {{ .Values.config.RQ_QUEUE_NAME | quote }}
+  S3_BUCKET_NAME: {{ .Values.config.S3_BUCKET_NAME | quote }}
+  S3_CREATE_BUCKET: {{ .Values.config.S3_CREATE_BUCKET | quote }}
+  S3_ENDPOINT_URL: {{ printf "http://%s:%v" (include "palms.minio.name" .) .Values.minio.service.apiPort | quote }}
+  S3_PUBLIC_BASE_URL: {{ include "palms.s3PublicBaseUrl" . | quote }}
+  S3_PUBLIC_READ: {{ .Values.config.S3_PUBLIC_READ | quote }}
+  S3_REGION: {{ .Values.config.S3_REGION | quote }}
+  S3_USE_PATH_STYLE: {{ .Values.config.S3_USE_PATH_STYLE | quote }}
+  SESSION_COOKIE_SECURE: {{ .Values.config.SESSION_COOKIE_SECURE | quote }}
+  SESSION_TIMEOUT_MINUTES: {{ .Values.config.SESSION_TIMEOUT_MINUTES | quote }}
+  SMTP_FROM_EMAIL: {{ .Values.config.SMTP_FROM_EMAIL | quote }}
+  SMTP_FROM_NAME: {{ .Values.config.SMTP_FROM_NAME | quote }}
+  SMTP_HOST: {{ include "palms.mailhog.name" . | quote }}
+  SMTP_PASSWORD: {{ .Values.config.SMTP_PASSWORD | quote }}
+  SMTP_PORT: {{ .Values.config.SMTP_PORT | quote }}
+  SMTP_USE_TLS: {{ .Values.config.SMTP_USE_TLS | quote }}
+  SMTP_USERNAME: {{ .Values.config.SMTP_USERNAME | quote }}
+  STORAGE_PROVIDER: {{ .Values.config.STORAGE_PROVIDER | quote }}

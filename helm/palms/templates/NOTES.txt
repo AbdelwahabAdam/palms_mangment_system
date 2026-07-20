@@ -1,0 +1,14 @@
+1. Ensure app images exist on all cluster nodes (or a reachable registry):
+   - {{ .Values.backend.image.repository }}:{{ .Values.backend.image.tag }}
+   - {{ .Values.frontend.image.repository }}:{{ .Values.frontend.image.tag }}
+
+2. Application URL (via ingress-nginx NodePort):
+   {{ include "palms.publicBaseUrl" . }}
+   Admin: {{ include "palms.publicBaseUrl" . }}/admin/
+
+3. MinIO API (public object URLs):
+   {{ include "palms.s3PublicBaseUrl" . }}
+   Console NodePort: {{ .Values.minio.service.consoleNodePort }}
+
+4. Check rollout:
+   kubectl get pods,svc,ingress -l app.kubernetes.io/instance={{ .Release.Name }}

@@ -1,0 +1,151 @@
+# Default values for palms (local / k3s).
+# Service names stay short (backend, postgres, ...) so frontend nginx and
+# in-cluster DNS keep working without image rebuilds.
+
+nameOverride: ""
+fullnameOverride: ""
+
+global:
+  # Public entry via ingress-nginx NodePort (see ansible nginx-ingress role)
+  publicHost: "34.220.189.105"
+  publicPort: 31080
+  # MinIO API NodePort for browser-accessible object URLs
+  minioPublicPort: 30900
+
+backend:
+  enabled: true
+  replicaCount: 3
+  image:
+    repository: palms-backend
+    tag: local
+    pullPolicy: IfNotPresent
+  service:
+    port: 8000
+  probes:
+    readiness:
+      path: /health
+      initialDelaySeconds: 5
+      periodSeconds: 5
+      failureThreshold: 6
+    liveness:
+      path: /health
+      initialDelaySeconds: 15
+      periodSeconds: 10
+      failureThreshold: 5
+
+frontend:
+  enabled: true
+  replicaCount: 3
+  image:
+    repository: palms-frontend
+    tag: local
+    pullPolicy: IfNotPresent
+  service:
+    port: 3000
+    targetPort: 80
+  probes:
+    readiness:
+      path: /
+      initialDelaySeconds: 3
+      periodSeconds: 5
+      failureThreshold: 6
+    liveness:
+      path: /
+      initialDelaySeconds: 10
+      periodSeconds: 10
+      failureThreshold: 5
+
+postgres:
+  enabled: true
+  image:
+    repository: postgres
+    tag: 16-alpine
+    pullPolicy: IfNotPresent
+  service:
+    port: 5432
+  auth:
+    database: palms_db
+    username: palms_user
+    password: palms_password
+  persistence:
+    enabled: true
+    size: 1Gi
+    storageClass: ""
+    subPath: pgdata
+
+redis:
+  enabled: true
+  image:
+    repository: redis
+    tag: 7-alpine
+    pullPolicy: IfNotPresent
+  service:
+    port: 6379
+  persistence:
+    enabled: true
+    size: 512Mi
+    storageClass: ""
+
+minio:
+  enabled: true
+  image:
+    repository: minio/minio
+    tag: latest
+    pullPolicy: IfNotPresent
+  auth:
+    rootUser: palms_minio
+    rootPassword: palms_minio_password
+  service:
+    type: NodePort
+    apiPort: 9000
+    consolePort: 9001
+    apiNodePort: 30900
+    consoleNodePort: 30901
+  persistence:
+    enabled: true
+    size: 2Gi
+    storageClass: ""
+
+mailhog:
+  enabled: true
+  image:
+    repository: mailhog/mailhog
+    tag: v1.0.1
+    pullPolicy: IfNotPresent
+  service:
+    smtpPort: 1025
+    uiPort: 8025
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "20m"
+  hosts: []
+  # Empty hosts => match all (IP / NodePort access)
+  path: /
+  pathType: Prefix
+
+config:
+  APP_ENVIRONMENT: development
+  APP_NAME: palms-api
+  APP_VERSION: "0.1.0"
+  LOG_LEVEL: INFO
+  SESSION_TIMEOUT_MINUTES: "60"
+  SESSION_COOKIE_SECURE: "false"
+  EMAIL_ENABLED: "true"
+  SMTP_FROM_EMAIL: no-reply@lifemaker.local
+  SMTP_FROM_NAME: Lifemaker Foundation
+  SMTP_PORT: "1025"
+  SMTP_USE_TLS: "false"
+  SMTP_USERNAME: ""
+  SMTP_PASSWORD: ""
+  REPORT_EXECUTION_MODE: rq
+  RQ_QUEUE_NAME: reports
+  STORAGE_PROVIDER: s3
+  S3_BUCKET_NAME: palms-images
+  S3_REGION: us-east-1
+  S3_USE_PATH_STYLE: "true"
+  S3_CREATE_BUCKET: "true"
+  S3_PUBLIC_READ: "true"
+  IMAGE_MAX_UPLOAD_MB: "15"

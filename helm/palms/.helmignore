@@ -1,0 +1,3 @@
+# Ignore chart dependencies / build artifacts if added later
+charts/
+*.tgz

@@ -1,0 +1,21 @@
+{{- if .Values.mailhog.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "palms.mailhog.name" . }}
+  labels:
+    {{- include "palms.componentLabels" (dict "ctx" . "component" "mailhog") | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - name: smtp
+      port: {{ .Values.mailhog.service.smtpPort }}
+      targetPort: smtp
+      protocol: TCP
+    - name: ui
+      port: {{ .Values.mailhog.service.uiPort }}
+      targetPort: ui
+      protocol: TCP
+  selector:
+    {{- include "palms.componentSelectorLabels" (dict "ctx" . "component" "mailhog") | nindent 4 }}
+{{- end }}

@@ -1,0 +1,30 @@
+{{- if .Values.mailhog.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "palms.mailhog.name" . }}
+  labels:
+    {{- include "palms.componentLabels" (dict "ctx" . "component" "mailhog") | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "palms.componentSelectorLabels" (dict "ctx" . "component" "mailhog") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "palms.componentSelectorLabels" (dict "ctx" . "component" "mailhog") | nindent 8 }}
+    spec:
+      containers:
+        - name: mailhog
+          image: "{{ .Values.mailhog.image.repository }}:{{ .Values.mailhog.image.tag }}"
+          imagePullPolicy: {{ .Values.mailhog.image.pullPolicy }}
+          ports:
+            - name: smtp
+              containerPort: {{ .Values.mailhog.service.smtpPort }}
+              protocol: TCP
+            - name: ui
+              containerPort: {{ .Values.mailhog.service.uiPort }}
+              protocol: TCP
+      restartPolicy: Always
+{{- end }}

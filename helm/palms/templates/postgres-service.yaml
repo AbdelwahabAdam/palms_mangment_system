@@ -1,0 +1,17 @@
+{{- if .Values.postgres.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "palms.postgres.name" . }}
+  labels:
+    {{- include "palms.componentLabels" (dict "ctx" . "component" "postgres") | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - name: postgres
+      port: {{ .Values.postgres.service.port }}
+      targetPort: postgres
+      protocol: TCP
+  selector:
+    {{- include "palms.componentSelectorLabels" (dict "ctx" . "component" "postgres") | nindent 4 }}
+{{- end }}
