@@ -1,56 +1,292 @@
 #SPDX-License-Identifier: MIT-0
 ---
-# tasks file for transfer_files
+# tasks file for deploy — clone, build/import images, helm upgrade palms chart
 
 ## TODO: make this private repo and add access token to ansible vault for authentication
 - name: Clone palms repository
   ansible.builtin.git:
-    repo: https://github.com/AbdelwahabAdam/palms_mangment_system.git
-    dest: /opt/palms
-    version: main
+    repo: "{{ palms_repo_url }}"
+    dest: "{{ palms_repo_dest }}"
+    version: "{{ palms_repo_version }}"
     update: true
     force: true
 
-- name: Create reports directory
-  file:
-    path: /data/report_data
+- name: Ensure Helm chart exists
+  ansible.builtin.stat:
+    path: "{{ palms_helm_chart }}/Chart.yaml"
+  register: palms_chart_stat
+
+- name: Fail if Helm chart is missing
+  ansible.builtin.assert:
+    that:
+      - palms_chart_stat.stat.exists
+    fail_msg: >-
+      Helm chart not found at {{ palms_helm_chart }}.
+      Expected Chart.yaml after cloning {{ palms_repo_url }}.
+
+- name: Ensure Docker is running
+  ansible.builtin.service:
+    name: docker
+    state: started
+    enabled: true
+  when: palms_build_images | bool
+
+- name: Build backend image
+  ansible.builtin.command:
+    cmd: >-
+      docker build -t {{ palms_backend_image }}:{{ palms_image_tag }}
+      {{ palms_repo_dest }}/backend
+  when: palms_build_images | bool
+  changed_when: true
+
+- name: Build frontend image
+  ansible.builtin.command:
+    cmd: >-
+      docker build -t {{ palms_frontend_image }}:{{ palms_image_tag }}
+      {{ palms_repo_dest }}/frontend
+  when: palms_build_images | bool
+  changed_when: true
+
+- name: Verify local app images exist in Docker
+  ansible.builtin.command:
+    cmd: docker image inspect {{ item }}:{{ palms_image_tag }}
+  loop:
+    - "{{ palms_backend_image }}"
+    - "{{ palms_frontend_image }}"
+  when: palms_build_images | bool
+  changed_when: false
+
+# Only needed when k3s uses containerd (NOT --docker). This cluster uses --docker.
+- name: Ensure k3s is running before image import
+  ansible.builtin.service:
+    name: k3s
+    state: started
+  when:
+    - palms_build_images | bool
+    - palms_import_images_to_k3s | bool
+
+- name: Wait for k3s containerd socket
+  ansible.builtin.wait_for:
+    path: "{{ palms_k3s_containerd_sock }}"
+    timeout: 120
+  when:
+    - palms_build_images | bool
+    - palms_import_images_to_k3s | bool
+
+- name: Create image tar directory
+  ansible.builtin.file:
+    path: "{{ palms_image_tar_dir }}"
     state: directory
-    owner: 100
-    group: 101
-    mode: "0775"
+    mode: "0755"
+  when:
+    - palms_build_images | bool
+    - palms_import_images_to_k3s | bool
 
-# - name: Create instance_ip file
-#   copy:
-#     dest: /opt/palms/instance_ip
-#     content: "{{ ansible_host }}\n"
-#     owner: ubuntu
-#     group: ubuntu
-#     mode: "0644"
+- name: Save backend image to tar
+  ansible.builtin.command:
+    cmd: >-
+      docker save -o {{ palms_image_tar_dir }}/backend.tar
+      {{ palms_backend_image }}:{{ palms_image_tag }}
+  when:
+    - palms_build_images | bool
+    - palms_import_images_to_k3s | bool
+  changed_when: true
 
-- name: Deploy palms
+- name: Save frontend image to tar
+  ansible.builtin.command:
+    cmd: >-
+      docker save -o {{ palms_image_tar_dir }}/frontend.tar
+      {{ palms_frontend_image }}:{{ palms_image_tag }}
+  when:
+    - palms_build_images | bool
+    - palms_import_images_to_k3s | bool
+  changed_when: true
+
+- name: Import backend image into k3s containerd
+  ansible.builtin.command:
+    cmd: >-
+      k3s ctr --address {{ palms_k3s_containerd_sock }}
+      -n k8s.io images import {{ palms_image_tar_dir }}/backend.tar
+  when:
+    - palms_build_images | bool
+    - palms_import_images_to_k3s | bool
+  changed_when: true
+
+- name: Import frontend image into k3s containerd
+  ansible.builtin.command:
+    cmd: >-
+      k3s ctr --address {{ palms_k3s_containerd_sock }}
+      -n k8s.io images import {{ palms_image_tar_dir }}/frontend.tar
+  when:
+    - palms_build_images | bool
+    - palms_import_images_to_k3s | bool
+  changed_when: true
+
+- name: Remove temporary image tars
+  ansible.builtin.file:
+    path: "{{ palms_image_tar_dir }}"
+    state: absent
+  when:
+    - palms_build_images | bool
+    - palms_import_images_to_k3s | bool
+
+- name: Deploy palms with Helm
   kubernetes.core.helm:
-    kubeconfig: /etc/rancher/k3s/k3s.yaml
-    wait: true
-    name: palms
-    chart_ref: /opt/palms/helm
-    release_namespace: palms
-    release_state: present
+    name: "{{ palms_release_name }}"
+    chart_ref: "{{ palms_helm_chart }}"
+    release_namespace: "{{ palms_namespace }}"
     create_namespace: true
-
-    values_files:
-      - /opt/palms/helm/values.yaml
-
+    kubeconfig: "{{ palms_kubeconfig }}"
+    wait: true
+    timeout: "{{ palms_helm_timeout }}"
+    release_state: present
     values:
-      backendSecret:
-        DATABASE_USER: "{{ DATABASE_USER }}"
-        DATABASE_PASSWORD: "{{ DATABASE_PASSWORD }}"
-        JWT_SECRET_KEY: "{{ JWT_SECRET_KEY }}"
-        BOOTSTRAP_ADMIN_EMAIL: "{{ BOOTSTRAP_ADMIN_EMAIL }}"
-        BOOTSTRAP_ADMIN_PASSWORD: "{{ BOOTSTRAP_ADMIN_PASSWORD }}"
-        SMTP_USERNAME: "{{ SMTP_USERNAME }}"
-        SMTP_PASSWORD: "{{ SMTP_PASSWORD }}"
-        SMTP_FROM: "{{ SMTP_FROM }}"
-      registry:
-        username: "{{ dockerhub_username }}"
-        password: "{{ dockerhub_token }}"
-        email: "{{ dockerhub_email }}"
+      global:
+        publicHost: "{{ palms_public_host }}"
+        publicPort: "{{ palms_public_port | int }}"
+        minioPublicPort: "{{ palms_minio_public_port | int }}"
+      backend:
+        replicaCount: "{{ palms_backend_replicas | int }}"
+        image:
+          repository: "{{ palms_backend_image }}"
+          tag: "{{ palms_image_tag }}"
+          pullPolicy: "{{ palms_image_pull_policy }}"
+      frontend:
+        replicaCount: "{{ palms_frontend_replicas | int }}"
+        image:
+          repository: "{{ palms_frontend_image }}"
+          tag: "{{ palms_image_tag }}"
+          pullPolicy: "{{ palms_image_pull_policy }}"
+      postgres:
+        auth:
+          database: "{{ palms_postgres_db }}"
+          username: "{{ palms_postgres_user }}"
+          password: "{{ palms_postgres_password }}"
+      minio:
+        auth:
+          rootUser: "{{ palms_minio_root_user }}"
+          rootPassword: "{{ palms_minio_root_password }}"
+        service:
+          apiNodePort: "{{ palms_minio_public_port | int }}"
+      config: "{{ palms_config }}"
+  run_once: true
+  delegate_to: "{{ groups['servers'][0] }}"
+
+- name: Wait for backend deployment
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ palms_kubeconfig }}"
+    api_version: apps/v1
+    kind: Deployment
+    namespace: "{{ palms_namespace }}"
+    name: backend
+    wait: true
+    wait_condition:
+      type: Available
+      status: "True"
+    wait_timeout: 600
+  run_once: true
+  delegate_to: "{{ groups['servers'][0] }}"
+
+- name: Wait for frontend deployment
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ palms_kubeconfig }}"
+    api_version: apps/v1
+    kind: Deployment
+    namespace: "{{ palms_namespace }}"
+    name: frontend
+    wait: true
+    wait_condition:
+      type: Available
+      status: "True"
+    wait_timeout: 600
+  run_once: true
+  delegate_to: "{{ groups['servers'][0] }}"
+
+- name: Get palms pods
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ palms_kubeconfig }}"
+    api_version: v1
+    kind: Pod
+    namespace: "{{ palms_namespace }}"
+    label_selectors:
+      - "app.kubernetes.io/instance={{ palms_release_name }}"
+  register: palms_pods
+  run_once: true
+  delegate_to: "{{ groups['servers'][0] }}"
+
+- name: Display palms pods
+  ansible.builtin.debug:
+    msg: |
+      {% for pod in palms_pods.resources %}
+      ----------------------------------------
+      Name: {{ pod.metadata.name }}
+      Phase: {{ pod.status.phase }}
+      Ready:
+      {{
+        pod.status.conditions
+        | default([])
+        | selectattr('type', 'equalto', 'Ready')
+        | map(attribute='status')
+        | list
+        | first
+        | default('Unknown')
+      }}
+      {% endfor %}
+  run_once: true
+  delegate_to: "{{ groups['servers'][0] }}"
+
+- name: Get palms services
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ palms_kubeconfig }}"
+    api_version: v1
+    kind: Service
+    namespace: "{{ palms_namespace }}"
+  register: palms_services
+  run_once: true
+  delegate_to: "{{ groups['servers'][0] }}"
+
+- name: Display palms services
+  ansible.builtin.debug:
+    msg: |
+      {% for svc in palms_services.resources %}
+      ----------------------------------------
+      Name: {{ svc.metadata.name }}
+      Type: {{ svc.spec.type }}
+      ClusterIP: {{ svc.spec.clusterIP }}
+      {% for port in svc.spec.ports %}
+      Port {{ port.port }} -> {{ port.targetPort }}{% if port.nodePort is defined %} (NodePort {{ port.nodePort }}){% endif %}
+      {% endfor %}
+      {% endfor %}
+  run_once: true
+  delegate_to: "{{ groups['servers'][0] }}"
+
+- name: Get palms ingress
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ palms_kubeconfig }}"
+    api_version: networking.k8s.io/v1
+    kind: Ingress
+    namespace: "{{ palms_namespace }}"
+    name: "{{ palms_release_name }}"
+  register: palms_ingress
+  run_once: true
+  delegate_to: "{{ groups['servers'][0] }}"
+
+- name: Display deploy endpoints
+  ansible.builtin.debug:
+    msg:
+      app: "http://{{ palms_public_host }}:{{ palms_public_port }}"
+      admin: "http://{{ palms_public_host }}:{{ palms_public_port }}/admin/"
+      minio_api: "http://{{ palms_public_host }}:{{ palms_minio_public_port }}"
+      ingress: "{{ palms_ingress.resources[0].metadata.name | default('missing') }}"
+  run_once: true
+  delegate_to: "{{ groups['servers'][0] }}"
+
+- name: Ensure palms deployed successfully
+  ansible.builtin.assert:
+    that:
+      - palms_pods.resources | length > 0
+      - palms_ingress.resources | length > 0
+    success_msg: "Palms Helm release deployed successfully."
+    fail_msg: "Palms Helm deployment failed or incomplete."
+  run_once: true
+  delegate_to: "{{ groups['servers'][0] }}"

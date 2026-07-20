@@ -26,8 +26,8 @@
     # - helm
     # - k3s
     # - nginx-ingress
-    - cert-manager
-    - alertmanager
-    - prometheus
-    - grafana
-    # - deploy
+    # - cert-manager
+    # - alertmanager
+    # - prometheus
+    # - grafana
+    - deploy

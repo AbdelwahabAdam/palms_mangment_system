@@ -1,3 +1,43 @@
 #SPDX-License-Identifier: MIT-0
 ---
 # defaults file for deploy
+
+palms_repo_url: https://github.com/AbdelwahabAdam/palms_mangment_system.git
+palms_repo_version: main
+palms_repo_dest: /opt/palms
+
+palms_helm_chart: "{{ palms_repo_dest }}/helm/palms"
+palms_release_name: palms
+palms_namespace: palms
+palms_kubeconfig: /etc/rancher/k3s/k3s.yaml
+palms_helm_timeout: 10m
+
+# Build local images on every node before helm install.
+# This cluster runs k3s with --docker, so images only need to exist in Docker
+# (no k3s ctr import). Set palms_import_images_to_k3s=true only for containerd.
+palms_build_images: true
+palms_import_images_to_k3s: false
+palms_backend_image: palms-backend
+palms_frontend_image: palms-frontend
+palms_image_tag: local
+palms_image_pull_policy: IfNotPresent
+palms_image_tar_dir: /tmp/palms-images
+palms_k3s_containerd_sock: /run/k3s/containerd/containerd.sock
+
+palms_backend_replicas: 3
+palms_frontend_replicas: 3
+
+# Browser-facing endpoints (ingress-nginx + MinIO NodePorts)
+palms_public_host: "{{ hostvars[groups['servers'][0]].ansible_host }}"
+palms_public_port: 31080
+palms_minio_public_port: 30900
+
+# Secret-backed credentials (override via vault / group_vars in real envs)
+palms_postgres_db: palms_db
+palms_postgres_user: palms_user
+palms_postgres_password: palms_password
+palms_minio_root_user: palms_minio
+palms_minio_root_password: palms_minio_password
+
+# Extra ConfigMap overrides merged into chart config (optional)
+palms_config: {}
