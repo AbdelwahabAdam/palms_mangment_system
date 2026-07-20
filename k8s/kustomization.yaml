@@ -1,0 +1,21 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - local-env-configmap.yaml
+  - local-env-secret.yaml
+  - postgres-data-persistentvolumeclaim.yaml
+  - redis-data-persistentvolumeclaim.yaml
+  - minio-data-persistentvolumeclaim.yaml
+  - postgres-deployment.yaml
+  - postgres-service.yaml
+  - redis-deployment.yaml
+  - redis-service.yaml
+  - minio-deployment.yaml
+  - minio-service.yaml
+  - mailhog-deployment.yaml
+  - mailhog-service.yaml
+  - backend-deployment.yaml
+  - backend-service.yaml
+  - frontend-deployment.yaml
+  - frontend-service.yaml
+  - palms-ingress.yaml

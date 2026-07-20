@@ -8,7 +8,7 @@ metadata:
     io.kompose.service: frontend
   name: frontend
 spec:
-  replicas: 1
+  replicas: 3
   selector:
     matchLabels:
       io.kompose.service: frontend
@@ -21,9 +21,24 @@ spec:
         io.kompose.service: frontend
     spec:
       containers:
-        - image: palms-frontend:local
-          name: frontend
+        - name: frontend
+          image: palms-frontend:local
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 80
               protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 3
+            periodSeconds: 5
+            failureThreshold: 6
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            failureThreshold: 5
       restartPolicy: Always
