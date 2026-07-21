@@ -1,0 +1,4 @@
+#SPDX-License-Identifier: MIT-0
+---
+# inventory for seed role tests
+localhost ansible_connection=local

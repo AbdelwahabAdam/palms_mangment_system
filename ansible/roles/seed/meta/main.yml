@@ -1,0 +1,8 @@
+#SPDX-License-Identifier: MIT-0
+galaxy_info:
+  author: palms
+  description: Create Super Admin and seed Palms demo data via kubectl exec
+  license: MIT
+  min_ansible_version: "2.14"
+  galaxy_tags: []
+dependencies: []

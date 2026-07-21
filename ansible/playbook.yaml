@@ -30,4 +30,5 @@
     # - alertmanager
     # - prometheus
     # - grafana
-    - deploy
+    # - deploy
+    - seed  # create Super Admin + seed demo data (requires deploy first)

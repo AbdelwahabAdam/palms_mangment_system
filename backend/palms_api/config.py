@@ -48,7 +48,7 @@ class Settings(BaseSettings):
     s3_use_path_style: bool = True
     s3_create_bucket: bool = False
     s3_public_read: bool = False
-    # Set to "AES256" for AWS SSE-S3. Leave unset for MinIO (SSE without KMS fails).
+    # Opt-in SSE header (e.g. "AES256"). Leave unset/empty for MinIO.
     s3_server_side_encryption: str | None = None
     redis_url: str | None = None
     rq_queue_name: str = "reports"

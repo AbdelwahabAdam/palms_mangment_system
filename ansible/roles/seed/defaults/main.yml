@@ -1,0 +1,21 @@
+#SPDX-License-Identifier: MIT-0
+---
+# defaults file for seed
+
+palms_namespace: palms
+palms_kubeconfig: /etc/rancher/k3s/k3s.yaml
+palms_backend_deploy: backend
+
+# Create Super Admin (override password via vault in real envs)
+palms_create_admin: true
+palms_admin_email: admin@example.com
+palms_admin_password: Admin12345678
+palms_admin_name: Super Admin
+
+# Seed demo data into the running backend pod
+palms_run_seed_data: true
+# seed_full_demo_data.py = 10 donors, 20 palms+images, reports, schedules
+# seed_demo_data.py     = small smoke dataset
+palms_seed_script: seed_full_demo_data.py
+
+palms_seed_wait_timeout: 600

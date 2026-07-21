@@ -90,11 +90,10 @@ class S3StorageClient:
             "Body": content,
             "ContentType": content_type,
         }
-        # AWS S3: default SSE-S3. MinIO/custom endpoints often reject SSE without KMS.
+        # Opt-in only. MinIO rejects SSE-S3 unless KMS is configured.
+        # For AWS SSE-S3 set S3_SERVER_SIDE_ENCRYPTION=AES256.
         if self.settings.s3_server_side_encryption:
             params["ServerSideEncryption"] = self.settings.s3_server_side_encryption
-        elif not self.settings.s3_endpoint_url:
-            params["ServerSideEncryption"] = "AES256"
         self.client.put_object(**params)
 
     def delete_file(self, key: str) -> None:

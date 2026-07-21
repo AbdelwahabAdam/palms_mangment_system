@@ -1,0 +1,116 @@
+#SPDX-License-Identifier: MIT-0
+---
+# tasks file for seed — create Super Admin + load demo data
+
+- name: Wait for backend deployment to be Available
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ palms_kubeconfig }}"
+    api_version: apps/v1
+    kind: Deployment
+    namespace: "{{ palms_namespace }}"
+    name: "{{ palms_backend_deploy }}"
+    wait: true
+    wait_condition:
+      type: Available
+      status: "True"
+    wait_timeout: "{{ palms_seed_wait_timeout | int }}"
+  run_once: true
+  delegate_to: "{{ groups['servers'][0] }}"
+
+- name: Create Super Admin account
+  ansible.builtin.command:
+    argv:
+      - kubectl
+      - --kubeconfig
+      - "{{ palms_kubeconfig }}"
+      - -n
+      - "{{ palms_namespace }}"
+      - exec
+      - "deploy/{{ palms_backend_deploy }}"
+      - --
+      - python
+      - scripts/create_super_admin.py
+      - --email
+      - "{{ palms_admin_email }}"
+      - --password
+      - "{{ palms_admin_password }}"
+      - --name
+      - "{{ palms_admin_name }}"
+  register: palms_admin_create
+  failed_when:
+    - palms_admin_create.rc != 0
+    - "'already exists' not in (palms_admin_create.stdout | default(''))"
+    - "'already exists' not in (palms_admin_create.stderr | default(''))"
+  changed_when: palms_admin_create.rc == 0
+  when: palms_create_admin | bool
+  run_once: true
+  delegate_to: "{{ groups['servers'][0] }}"
+  no_log: true
+
+- name: Display Super Admin create result
+  ansible.builtin.debug:
+    msg: >-
+      {% if palms_admin_create.rc | default(1) == 0 %}
+      Super Admin created for {{ palms_admin_email }}.
+      {% else %}
+      Super Admin already exists for {{ palms_admin_email }}; skipping create.
+      {% endif %}
+  when: palms_create_admin | bool
+  run_once: true
+  delegate_to: "{{ groups['servers'][0] }}"
+
+- name: Ensure seed script exists in backend image
+  ansible.builtin.command:
+    argv:
+      - kubectl
+      - --kubeconfig
+      - "{{ palms_kubeconfig }}"
+      - -n
+      - "{{ palms_namespace }}"
+      - exec
+      - "deploy/{{ palms_backend_deploy }}"
+      - --
+      - test
+      - -f
+      - "scripts/{{ palms_seed_script }}"
+  when: palms_run_seed_data | bool
+  changed_when: false
+  run_once: true
+  delegate_to: "{{ groups['servers'][0] }}"
+
+- name: Seed demo data
+  ansible.builtin.command:
+    argv:
+      - kubectl
+      - --kubeconfig
+      - "{{ palms_kubeconfig }}"
+      - -n
+      - "{{ palms_namespace }}"
+      - exec
+      - "deploy/{{ palms_backend_deploy }}"
+      - --
+      - python
+      - "scripts/{{ palms_seed_script }}"
+  register: palms_seed_result
+  when: palms_run_seed_data | bool
+  changed_when: >-
+    palms_seed_result.rc == 0
+    and 'already present' not in (palms_seed_result.stdout | default(''))
+  run_once: true
+  delegate_to: "{{ groups['servers'][0] }}"
+
+- name: Display seed result
+  ansible.builtin.debug:
+    msg: "{{ palms_seed_result.stdout | default(palms_seed_result.stderr) | default('seed skipped') }}"
+  when: palms_run_seed_data | bool
+  run_once: true
+  delegate_to: "{{ groups['servers'][0] }}"
+
+- name: Display bootstrap login hints
+  ansible.builtin.debug:
+    msg:
+      admin_email: "{{ palms_admin_email }}"
+      admin_portal: "http://{{ hostvars[groups['servers'][0]].ansible_host | default('NODE_IP') }}:31080/admin/"
+      note: "Override palms_admin_password via vault/group_vars for non-dev use."
+  run_once: true
+  delegate_to: "{{ groups['servers'][0] }}"
